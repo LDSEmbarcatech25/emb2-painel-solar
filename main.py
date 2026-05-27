@@ -150,7 +150,7 @@ def ler_ldr1_estavel():
 servo1_pwm = PWM(Pin(43), freq=50, duty_u16=0)   
 servo2_pwm = PWM(Pin(44), freq=50, duty_u16=0)   
 
-# Correção física do Buzzer para ESP32-S3 real
+# Buzzer  ESP32-S3
 buzzer_pin = Pin(3, Pin.OUT)
 buzzer = PWM(buzzer_pin)
 buzzer.init(freq=5000, duty_u16=0)
@@ -188,7 +188,7 @@ def mover_servo_suave(graus_alvo, emitir_som=False):
         mover_servo(graus_alvo)
         angulo_alvo_antigo = graus_alvo
 
-# ── ATUADORES DE FÁBRICA (NÍVEL LÓGICO ALTO) ─────────────────────────────────
+# ── ATUADORES NATIVOS KIIRA (NÍVEL LÓGICO ALTO) ─────────────────────────────────
 relay1      = Pin(48, Pin.OUT, value=0)  
 btn_limpeza = Pin(45, Pin.IN, Pin.PULL_UP)
 btn_reset   = Pin(46, Pin.IN, Pin.PULL_UP)
