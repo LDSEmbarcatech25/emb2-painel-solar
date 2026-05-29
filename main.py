@@ -15,56 +15,39 @@
 #   GPIO 46 → Botão 2 (Reset / Modo Manutenção Cíclico)
 #   GPIO 3  → Buzzer/LED Integrado (PWM 5kHz)
 # =============================================================================
+from machine import ADC, I2C, PWM, Pin, Timer
 
 import math
 import struct
 import time
-from machine import ADC, I2C, PWM, Pin
+import json
 
-# ── Driver SSD1306 embutido para o OLED Integrado ───────────────────────────
-class SSD1306:
-    def __init__(self, width, height, external_vcc):
-        self.width = width
-        self.height = height
-        self.external_vcc = external_vcc
-        self.pages = self.height // 8
-        self.buffer = bytearray(self.pages * self.width)
-        self.init_display()
-    def init_display(self):
-        for cmd in (0xAE, 0xD5, 0x80, 0xA8, self.height - 1, 0xD3, 0x00, 0x40, 0x8D, 0x14 if not self.external_vcc else 0x10, 0x20, 0x00, 0xA1, 0xC8, 0xDA, 0x12 if self.height == 64 else 0x02, 0x81, 0xCF if not self.external_vcc else 0x9F, 0xD9, 0xF1 if not self.external_vcc else 0x22, 0xDB, 0x40, 0xA4, 0xA6, 0xAF):
-            self.write_cmd(cmd)
-        self.fill(0)
-        self.show()
-    def fill(self, col):
-        self.buffer = bytearray([0xff if col else 0x00] * len(self.buffer))
-    def pixel(self, x, y, col):
-        if 0 <= x < self.width and 0 <= y < self.height:
-            index = (y // 8) * self.width + x
-            offset = y % 8
-            if col: self.buffer[index] |= (1 << offset)
-            else: self.buffer[index] &= ~(1 << offset)
-    def text(self, string, x, y, col=1):
-        import framebuf
-        fbuf = framebuf.FrameBuffer(self.buffer, self.width, self.height, framebuf.MONO_VLSB)
-        fbuf.text(string, x, y, col)
-    def show(self):
-        x0, x1 = 0, self.width - 1
-        self.write_cmd(0x21); self.write_cmd(x0); self.write_cmd(x1)
-        self.write_cmd(0x22); self.write_cmd(0); self.write_cmd(self.pages - 1)
-        self.write_data(self.buffer)
+import mqtt_service
+import wifi_service
+import camera_service
 
-class SSD1306_I2C(SSD1306):
-    def __init__(self, width, height, i2c, addr=0x3c, external_vcc=False):
-        self.i2c = i2c
-        self.addr = addr
-        self.temp = bytearray(2)
-        super().__init__(width, height, external_vcc)
-    def write_cmd(self, cmd):
-        self.temp[0] = 0x00; self.temp[1] = cmd
-        self.i2c.writeto(self.addr, self.temp)
-    def write_data(self, buf):
-        self.i2c.writeto(self.addr, b'\x40' + buf)
+from status_builder import StatusBuilder
 
+import ssd1306
+
+topicos_sub = [
+    "monitorador-solar/cmd/tirar-foto",
+    "monitorador-solar/cmd/acionar-valvula",
+]
+
+wifi = wifi_service.WifiService("IFCE Alunos","")
+wifi.conectar_rede()
+
+mqtt = mqtt_service.MqttService()
+mqtt.conectar_broker()
+
+mqtt.sub_multiplos_topicos(topicos_sub)
+
+camera = camera_service.CameraService()
+
+
+img = camera.capturar()
+mqtt.pub(b"monitorador-solar/receber-foto",img)
 # =============================================================================
 # PARÂMETROS CONFIGURÁVEIS
 # =============================================================================
@@ -96,7 +79,7 @@ MPU_ACCEL_REG = 0x3B
 i2c = I2C(0, sda=Pin(14), scl=Pin(21), freq=400_000)
 
 try:
-    oled = SSD1306_I2C(128, 64, i2c, addr=OLED_ADDR)
+    oled = ssd1306.SSD1306_I2C(128, 64, i2c, addr=OLED_ADDR)
     oled.fill(0)
     oled.text("KiiRA Solar V1.2", 0, 0)
     oled.text("Iniciando...", 0, 16)
@@ -212,6 +195,34 @@ t_ultimo_rastreamento = 0
 modo_manual = 0  
 t_inicio_inclinacao = 0  
 estado_noturno = False
+
+def timer_handler(timer=None):
+    json_teste = json.dumps(
+        {
+            "clima": {
+                "umidade": 0,
+                "temperatura": 12
+            },
+            "luminosidade": {
+                "LDR-Esq": 67,
+                "LDR-Dir": 90,
+                "delta": 12
+            },
+            "posicao-painel": {
+                "x": 1900,
+                "y": 2000
+            }
+        }
+    )
+
+    mqtt.pub(b"monitorador-solar/status/painel", json_teste)
+
+def publicar_foto(timer=None):
+    mqtt.pub(b"monitorador-solar/receber-foto",camera.capturar())
+
+timer = Timer(0)
+# timer.init(period=9_00_000, mode=Timer.PERIODIC, callback=timer_handler)
+timer.init(period=1_000, mode=Timer.PERIODIC, callback=publicar_foto)
 
 def loop():
     global angulo_atual, valvula_aberta, t_lavagem_fim, t_ultimo_rastreamento, modo_manual, t_inicio_inclinacao, estado_noturno
