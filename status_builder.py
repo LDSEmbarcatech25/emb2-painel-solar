@@ -20,7 +20,7 @@ class StatusBuilder:
         self.payload["luminosidade"] = {
             "ldr_esq": ldr_esq,
             "ldr_dir": ldr_dir,
-            "delta": delta,
+            "delta": delta
         }
         return self
 

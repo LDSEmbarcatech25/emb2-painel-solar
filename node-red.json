@@ -1,0 +1,38 @@
+[
+    {
+        "id": "e47aabdd686f7b24",
+        "type": "inject",
+        "z": "377cf312cc9cba38",
+        "d": true,
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "3",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"clima\":{\"umidade\":0,\"temperatura\":12},\"luminosidade\":{\"LDR-Esq\":\"5\",\"LDR-Dir\":\"90\",\"delta\":\"12\"},\"posicao-painel\":{\"x\":1900,\"y\":2000}}",
+        "payloadType": "json",
+        "x": 100,
+        "y": 700,
+        "wires": [
+            [
+                "167ca3a2ca9761da",
+                "24a6dc406cc7b66a",
+                "55dae12b1058a0ee",
+                "30a8ac3fe2ea50d2",
+                "2cf907f7c41cfd10",
+                "65230c8bd1450055",
+                "7d8e48450c261c30"
+            ]
+        ]
+    }
+]

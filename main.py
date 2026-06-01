@@ -43,11 +43,11 @@ mqtt.conectar_broker()
 
 mqtt.sub_multiplos_topicos(topicos_sub)
 
-camera = camera_service.CameraService()
+# camera = camera_service.CameraService()
 
+# img = camera.capturar()
+# mqtt.pub(b"monitorador-solar/receber-foto",img)
 
-img = camera.capturar()
-mqtt.pub(b"monitorador-solar/receber-foto",img)
 # =============================================================================
 # PARÂMETROS CONFIGURÁVEIS
 # =============================================================================
@@ -196,33 +196,30 @@ modo_manual = 0
 t_inicio_inclinacao = 0  
 estado_noturno = False
 
-def timer_handler(timer=None):
-    json_teste = json.dumps(
-        {
-            "clima": {
-                "umidade": 0,
-                "temperatura": 12
-            },
-            "luminosidade": {
-                "LDR-Esq": 67,
-                "LDR-Dir": 90,
-                "delta": 12
-            },
-            "posicao-painel": {
-                "x": 1900,
-                "y": 2000
-            }
-        }
-    )
+monitor_sensores = {
+    "umidade":0,
+    "temperatura": 0,
+    "posicao-x": 0,
+    "posicao-y": 0,
+    "LDR_Esq": 0,
+    "LDR_Dir": 0,
+    "delta": 0
+}
 
-    mqtt.pub(b"monitorador-solar/status/painel", json_teste)
+def enviar_status(timer=None):
+    json_status = StatusBuilder().set_clima(monitor_sensores["umidade"],monitor_sensores["temperatura"]).set_luminosidade(monitor_sensores["LDR_Esq"],monitor_sensores["LDR_Dir"],monitor_sensores["delta"]).set_posicao_painel(monitor_sensores["posicao-x"],monitor_sensores["posicao-y"]).build()
 
-def publicar_foto(timer=None):
-    mqtt.pub(b"monitorador-solar/receber-foto",camera.capturar())
+    print("ta mandando as info")
+    mqtt.pub(b"monitorador-solar/status/painel", json_status)
+
+# def publicar_foto(timer=None):
+#     mqtt.pub(b"monitorador-solar/receber-foto",camera.capturar())
 
 timer = Timer(0)
-# timer.init(period=9_00_000, mode=Timer.PERIODIC, callback=timer_handler)
-timer.init(period=1_000, mode=Timer.PERIODIC, callback=publicar_foto)
+# timer.init(period=1_000, mode=Timer.PERIODIC, callback=publicar_foto)
+# timer.init(period=1_000, mode=Timer.PERIODIC, callback=publicar_foto)
+timer.init(period=10_000, mode=Timer.ONE_SHOT, callback=enviar_status)
+# timer.init(period=3_600_000, mode=Timer.PERIODIC, callback=enviar_status) # 1 hora
 
 def loop():
     global angulo_atual, valvula_aberta, t_lavagem_fim, t_ultimo_rastreamento, modo_manual, t_inicio_inclinacao, estado_noturno
@@ -237,11 +234,17 @@ def loop():
         if time.ticks_diff(agora, t_ultimo_rastreamento) >= CICLO_MS:
             t_ultimo_rastreamento = agora
 
-            ldr1_val = ler_ldr1_estavel()       
-            ldr2_sat = pin_ldr2.value()         
+            ldr1_val = ler_ldr1_estavel()
+            ldr2_sat = pin_ldr2.value()
 
             ax, ay, az = mpu_leitura_accel()
             inclinacao  = calcular_angulo(ax, az)
+
+            monitor_sensores["LDR_Dir"] = ldr1_val
+            monitor_sensores["LDR_Esq"] = ldr2_sat
+
+            monitor_sensores["posicao-x"] = ax
+            monitor_sensores["posicao-x"] = ay
 
             if modo_manual == 0:
                 # ── SEGURANÇA 1: RETORNO AUTOMÁTICO SE COMPLETAMENTE ESCURO (PÔR DO SOL)
@@ -284,6 +287,10 @@ def loop():
                 mover_servo_suave(angulo_atual, emitir_som=True) 
 
             temp, umid = hdc_ler()
+
+            monitor_sensores["temperatura"] = temp
+            monitor_sensores["umidade"] = umid
+
             if OLED_OK:
                 oled.fill(0)
                 oled.text("KiiRA Solar V1.2", 0, 0)
