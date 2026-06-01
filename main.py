@@ -20,7 +20,6 @@ from machine import ADC, I2C, PWM, Pin, Timer
 import math
 import struct
 import time
-import json
 
 import mqtt_service
 import wifi_service
@@ -196,6 +195,8 @@ modo_manual = 0
 t_inicio_inclinacao = 0  
 estado_noturno = False
 
+pode_enviar_status = False
+
 monitor_sensores = {
     "umidade":0,
     "temperatura": 0,
@@ -206,8 +207,16 @@ monitor_sensores = {
     "delta": 0
 }
 
-def enviar_status(timer=None):
-    json_status = StatusBuilder().set_clima(monitor_sensores["umidade"],monitor_sensores["temperatura"]).set_luminosidade(monitor_sensores["LDR_Esq"],monitor_sensores["LDR_Dir"],monitor_sensores["delta"]).set_posicao_painel(monitor_sensores["posicao-x"],monitor_sensores["posicao-y"]).build()
+def timer_handler(timer=None):
+    global pode_enviar_status
+    pode_enviar_status = True
+
+def enviar_status():
+    json_status = (StatusBuilder()
+                   .set_clima(monitor_sensores["umidade"],monitor_sensores["temperatura"])
+                   .set_luminosidade(monitor_sensores["LDR_Esq"],monitor_sensores["LDR_Dir"],monitor_sensores["delta"])
+                   .set_posicao_painel(monitor_sensores["posicao-x"],monitor_sensores["posicao-y"])
+                   .build())
 
     print("ta mandando as info")
     mqtt.pub(b"monitorador-solar/status/painel", json_status)
@@ -217,12 +226,11 @@ def enviar_status(timer=None):
 
 timer = Timer(0)
 # timer.init(period=1_000, mode=Timer.PERIODIC, callback=publicar_foto)
-# timer.init(period=1_000, mode=Timer.PERIODIC, callback=publicar_foto)
-timer.init(period=10_000, mode=Timer.ONE_SHOT, callback=enviar_status)
+timer.init(period=10_000, mode=Timer.PERIODIC, callback=timer_handler)
 # timer.init(period=3_600_000, mode=Timer.PERIODIC, callback=enviar_status) # 1 hora
 
 def loop():
-    global angulo_atual, valvula_aberta, t_lavagem_fim, t_ultimo_rastreamento, modo_manual, t_inicio_inclinacao, estado_noturno
+    global angulo_atual, valvula_aberta, t_lavagem_fim, t_ultimo_rastreamento, modo_manual, t_inicio_inclinacao, estado_noturno, pode_enviar_status
 
     print("Firmware KiiRA V1.2 Ativo - Sistema operando!")
     mover_servo_suave(ANGULO_CTR, emitir_som=False)
@@ -230,6 +238,10 @@ def loop():
 
     while True:
         agora = time.ticks_ms()
+
+        if pode_enviar_status:
+            enviar_status()
+            pode_enviar_status = False
 
         if time.ticks_diff(agora, t_ultimo_rastreamento) >= CICLO_MS:
             t_ultimo_rastreamento = agora
