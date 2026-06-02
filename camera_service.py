@@ -40,8 +40,8 @@ class CameraService:
             xclk_pin=15,
             xclk_freq=20_000_000,
             pixel_format=PixelFormat.JPEG,
-            frame_size=FrameSize.QQVGA,
-            grab_mode=GrabMode.LATEST,
+            frame_size=FrameSize.HD,
+            grab_mode=GrabMode.LATEST
         )
 
     def capturar(self) -> bytes:

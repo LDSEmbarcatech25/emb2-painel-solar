@@ -11,8 +11,9 @@ class MqttService:
 
         self.topico = None
         self.msg = None
+        self.tem_mensagem = None
 
-        self.mqtt.set_callback(self.receber_msg)
+        self.mqtt.set_callback(self.msg_log)
 
     def conectar_broker(self):
         self.mqtt.connect()
@@ -27,9 +28,10 @@ class MqttService:
     def check(self):
         self.mqtt.check_msg()
 
-    def receber_msg(self, topico, msg):
+    def msg_log(self, topico, msg):
         self.topico = topico
         self.msg = msg
+        self.tem_mensagem = True
 
         print("Topico:", topico.decode())
         print("Mensagem:", msg.decode())
@@ -38,3 +40,11 @@ class MqttService:
         for topico in topicos:
             self.sub(topico)
             print(f"inscrito no topico: {topico}")
+
+    def chegou_msg(self):
+        self.mqtt.check_msg()
+
+    def reset(self):
+        self.tem_mensagem = False
+        self.msg = None
+        self.topico = None

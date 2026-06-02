@@ -1,5 +1,168 @@
 [
     {
+        "id": "377cf312cc9cba38",
+        "type": "tab",
+        "label": "Fluxo 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "ea27b94707b7061b",
+        "type": "debug",
+        "z": "377cf312cc9cba38",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 680,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "457c9f3bfb56774b",
+        "type": "ui-template",
+        "z": "377cf312cc9cba38",
+        "group": "8405d469c48bf0a5",
+        "page": "",
+        "ui": "",
+        "name": "",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "head": "",
+        "format": "<template>\n    <div>\n        <!-- Mostra a imagem recebida em msg.payload -->\n        <img\n            v-if=\"msg.payload\"\n            :src=\"'data:image/jpeg;base64,' + msg.payload\"\n            style=\"max-width: 100%; height: 100%;\"\n        />\n    </div>\n</template>\n\n<script>\nexport default {\n    data() {\n        return {\n            msg: {}\n        }\n    },\n    mounted() {\n        this.$socket.on('msg-input:' + this.id, (msg) => {\n            this.msg = msg\n        })\n    }\n}\n</script>\n\n<style>\nimg {\n    border-radius: 8px;\n}\n</style>",
+        "storeOutMessages": true,
+        "passthru": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 620,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "13fc5302f650ee9f",
+        "type": "ui-button",
+        "z": "377cf312cc9cba38",
+        "group": "8405d469c48bf0a5",
+        "name": "btn foto",
+        "label": "Tirar Foto",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "emulateClick": true,
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "iconPosition": "left",
+        "payload": "foto",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "buttonColor": "",
+        "textColor": "",
+        "iconColor": "",
+        "enableClick": true,
+        "enablePointerdown": false,
+        "pointerdownPayload": "",
+        "pointerdownPayloadType": "str",
+        "enablePointerup": false,
+        "pointerupPayload": "",
+        "pointerupPayloadType": "str",
+        "x": 100,
+        "y": 320,
+        "wires": [
+            [
+                "5eeccffc29938228"
+            ]
+        ]
+    },
+    {
+        "id": "de1871222134e716",
+        "type": "mqtt in",
+        "z": "377cf312cc9cba38",
+        "name": "",
+        "topic": "monitorador-solar/receber-foto",
+        "qos": "2",
+        "datatype": "buffer",
+        "broker": "0a2485cd592a5fc2",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 180,
+        "wires": [
+            [
+                "c859447856662ab2",
+                "97fc5575228aeefe",
+                "ea27b94707b7061b"
+            ]
+        ]
+    },
+    {
+        "id": "5eeccffc29938228",
+        "type": "mqtt out",
+        "z": "377cf312cc9cba38",
+        "name": "",
+        "topic": "monitorador-solar/cmd/tirar-foto",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "0a2485cd592a5fc2",
+        "x": 590,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "97fc5575228aeefe",
+        "type": "image viewer",
+        "z": "377cf312cc9cba38",
+        "name": "",
+        "width": 160,
+        "data": "payload",
+        "dataType": "msg",
+        "active": true,
+        "x": 430,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c859447856662ab2",
+        "type": "function",
+        "z": "377cf312cc9cba38",
+        "name": "function 1",
+        "func": "const base64 = msg.payload.toString('base64');\n\nmsg.payload = base64;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 100,
+        "wires": [
+            [
+                "457c9f3bfb56774b"
+            ]
+        ]
+    },
+    {
         "id": "e47aabdd686f7b24",
         "type": "inject",
         "z": "377cf312cc9cba38",
@@ -34,5 +197,716 @@
                 "7d8e48450c261c30"
             ]
         ]
+    },
+    {
+        "id": "157ad3ec7dbb41ce",
+        "type": "ui-progress",
+        "z": "377cf312cc9cba38",
+        "group": "5483a3e5ef01ad3b",
+        "name": "",
+        "label": "LDR Esquerdo",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "color": "",
+        "className": "",
+        "x": 920,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "757da5831619215c",
+        "type": "ui-progress",
+        "z": "377cf312cc9cba38",
+        "group": "5483a3e5ef01ad3b",
+        "name": "",
+        "label": "LDR Direito",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "color": "",
+        "className": "",
+        "x": 910,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "167ca3a2ca9761da",
+        "type": "function",
+        "z": "377cf312cc9cba38",
+        "name": "pegar valor LDR Esquerdo",
+        "func": "function calculo_porcentagem(valor) {\n    return Number(((valor / 4095) * 100).toFixed(0));\n}\n\nmsg.payload = calculo_porcentagem(\n    Number(msg.payload.luminosidade.LDR_Esq)\n);\n\nnode.warn(msg.payload);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 400,
+        "wires": [
+            [
+                "157ad3ec7dbb41ce"
+            ]
+        ]
+    },
+    {
+        "id": "24a6dc406cc7b66a",
+        "type": "function",
+        "z": "377cf312cc9cba38",
+        "name": "pegar valor LDR Direito",
+        "func": "function calculo_porcentagem(valor) {\n    return Number(((valor / 4095) * 100).toFixed(0));\n}\n\nmsg.payload = calculo_porcentagem(\n    Number(msg.payload.luminosidade.LDR_Dir)\n);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 460,
+        "wires": [
+            [
+                "757da5831619215c"
+            ]
+        ]
+    },
+    {
+        "id": "68ef89611ce9c89c",
+        "type": "ui-notification",
+        "z": "377cf312cc9cba38",
+        "ui": "c71f23725403d1cf",
+        "position": "top right",
+        "colorDefault": true,
+        "color": "#ff0000",
+        "displayTime": "5",
+        "showCountdown": true,
+        "outputs": 1,
+        "allowDismiss": true,
+        "dismissText": "Fechar",
+        "allowConfirm": false,
+        "confirmText": "Confirm",
+        "raw": true,
+        "className": "",
+        "name": "",
+        "x": 690,
+        "y": 780,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "29f2c66f91cd7385",
+        "type": "function",
+        "z": "377cf312cc9cba38",
+        "name": "formatar mensagem para notificação",
+        "func": "msg.payload = `Válvula acionada por ${msg.payload[\"tempo_segundos\"]} segundos`\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 780,
+        "wires": [
+            [
+                "68ef89611ce9c89c"
+            ]
+        ]
+    },
+    {
+        "id": "f69707452822be33",
+        "type": "ui-text",
+        "z": "377cf312cc9cba38",
+        "group": "2e77c70567b43a80",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Posição X:",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": true,
+        "font": "Arial,Arial,Helvetica,sans-serif",
+        "fontSize": "25",
+        "color": "#000000",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 910,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "30dea9e375e1243f",
+        "type": "ui-text",
+        "z": "377cf312cc9cba38",
+        "group": "2e77c70567b43a80",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Posição Y:",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": true,
+        "font": "",
+        "fontSize": "25",
+        "color": "#000000",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 910,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "30a8ac3fe2ea50d2",
+        "type": "function",
+        "z": "377cf312cc9cba38",
+        "name": "pegar posição X",
+        "func": "msg.payload = Number(msg.payload.posicao_painel.x)\n\nreturn msg",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 520,
+        "wires": [
+            [
+                "f69707452822be33"
+            ]
+        ]
+    },
+    {
+        "id": "55dae12b1058a0ee",
+        "type": "function",
+        "z": "377cf312cc9cba38",
+        "name": "pegar posição Y",
+        "func": "msg.payload = Number(msg.payload.posicao_painel.y)\n\nreturn msg",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 580,
+        "wires": [
+            [
+                "30dea9e375e1243f"
+            ]
+        ]
+    },
+    {
+        "id": "4563f62c68a7f581",
+        "type": "ui-template",
+        "z": "377cf312cc9cba38",
+        "group": "874e63a46c469f32",
+        "page": "",
+        "ui": "",
+        "name": "form",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "head": "",
+        "format": "<template>\n    <div>\n        <!-- <h2>Ligar Válvula</h2> -->\n\n        <!-- Campo obrigatório -->\n        <v-text-field v-model=\"tempo\" label=\"Tempo segundos\" type=\"number\" min=\"4\" max=\"60\" required :error=\"erro\"\n            :error-messages=\"mensagemErro\"></v-text-field>\n\n        <!-- Botões -->\n        <div style=\"display:flex; gap:10px;\">\n            <v-btn color=\"primary\" @click=\"enviar\">\n                Enviar\n            </v-btn>\n\n            <v-btn color=\"error\" variant=\"outlined\" @click=\"limpar\">\n                Limpar\n            </v-btn>\n        </div>\n\n    </div>\n</template>\n\n<script>\n    export default {\n    data() {\n        return {\n            tempo: '',\n            tempoEnviado: null,\n            erro: false,\n            mensagemErro: ''\n        }\n    },\n\n    methods: {\n        enviar() {\n            const valor = Number(this.tempo)\n\n            // validação\n            if (!this.tempo) {\n                this.erro = true\n                this.mensagemErro = 'Campo obrigatório'\n                return\n            }\n\n            if (valor < 4 || valor > 60) {\n                this.erro = true\n                this.mensagemErro = 'O valor deve estar entre 4 e 60 segundos'\n                return\n            }\n\n            this.erro = false\n            this.mensagemErro = ''\n            this.tempoEnviado = valor\n\n            // envia mensagem para o Node-RED\n            this.send({\n                payload: {\n                    \"cmd\":\"ligar\",\n                    \"tempo_segundos\": valor\n                }\n            })\n        },\n\n        limpar() {\n            // limpa os campos\n            this.tempo = ''\n            this.tempoEnviado = null\n            this.erro = false\n            this.mensagemErro = ''\n\n            // opcional: envia evento de limpeza\n            // this.send({\n            //     payload: {\n            //         acao: 'limpar'\n            //     }\n            // })\n        }\n    }\n}\n</script>\n\n<style>\n    h2 {\n        margin-bottom: 15px;\n    }\n</style>",
+        "storeOutMessages": true,
+        "passthru": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 90,
+        "y": 780,
+        "wires": [
+            [
+                "c79b4a7b93ea8faa",
+                "29f2c66f91cd7385",
+                "1bfeaf09c7328a51"
+            ]
+        ]
+    },
+    {
+        "id": "c79b4a7b93ea8faa",
+        "type": "debug",
+        "z": "377cf312cc9cba38",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 300,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "064ba5f909545165",
+        "type": "ui-chart",
+        "z": "377cf312cc9cba38",
+        "group": "34be8969f68a6ba5",
+        "name": "temperatura",
+        "label": "Temperatura (Cº) x Tempo",
+        "order": 1,
+        "chartType": "line",
+        "category": "topic",
+        "categoryType": "msg",
+        "xAxisLabel": "",
+        "xAxisProperty": "",
+        "xAxisPropertyType": "timestamp",
+        "xAxisType": "time",
+        "xAxisFormat": "",
+        "xAxisFormatType": "{HH}:{mm}",
+        "xmin": "",
+        "xmax": "",
+        "yAxisLabel": "",
+        "yAxisProperty": "payload",
+        "yAxisPropertyType": "msg",
+        "ymin": "",
+        "ymax": "",
+        "bins": 10,
+        "action": "append",
+        "stackSeries": false,
+        "pointShape": "circle",
+        "pointRadius": "5",
+        "showLegend": true,
+        "removeOlder": 1,
+        "removeOlderUnit": "3600",
+        "removeOlderPoints": "",
+        "colors": [
+            "#0095ff",
+            "#ff0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#a347e1",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "textColor": [
+            "#666666"
+        ],
+        "textColorDefault": true,
+        "gridColor": [
+            "#e5e5e5"
+        ],
+        "gridColorDefault": true,
+        "width": 6,
+        "height": 8,
+        "className": "",
+        "interpolation": "linear",
+        "x": 770,
+        "y": 700,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "b1a35d5283e68cdf",
+        "type": "ui-chart",
+        "z": "377cf312cc9cba38",
+        "group": "34be8969f68a6ba5",
+        "name": "umidade",
+        "label": "Umidade (%) x Tempo",
+        "order": 2,
+        "chartType": "line",
+        "category": "topic",
+        "categoryType": "msg",
+        "xAxisLabel": "",
+        "xAxisProperty": "",
+        "xAxisPropertyType": "timestamp",
+        "xAxisType": "time",
+        "xAxisFormat": "",
+        "xAxisFormatType": "{HH}:{mm}",
+        "xmin": "",
+        "xmax": "",
+        "yAxisLabel": "",
+        "yAxisProperty": "payload",
+        "yAxisPropertyType": "msg",
+        "ymin": "",
+        "ymax": "",
+        "bins": 10,
+        "action": "append",
+        "stackSeries": false,
+        "pointShape": "circle",
+        "pointRadius": "5",
+        "showLegend": true,
+        "removeOlder": 1,
+        "removeOlderUnit": "3600",
+        "removeOlderPoints": "",
+        "colors": [
+            "#0095ff",
+            "#ff0000",
+            "#ff7f0e",
+            "#2ca02c",
+            "#a347e1",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "textColor": [
+            "#666666"
+        ],
+        "textColorDefault": true,
+        "gridColor": [
+            "#e5e5e5"
+        ],
+        "gridColorDefault": true,
+        "width": 6,
+        "height": 8,
+        "className": "",
+        "interpolation": "linear",
+        "x": 760,
+        "y": 640,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2cf907f7c41cfd10",
+        "type": "function",
+        "z": "377cf312cc9cba38",
+        "name": "pegar umidade",
+        "func": "msg.payload = Number(msg.payload.clima.umidade)\n\nreturn msg",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 640,
+        "wires": [
+            [
+                "b1a35d5283e68cdf"
+            ]
+        ]
+    },
+    {
+        "id": "65230c8bd1450055",
+        "type": "function",
+        "z": "377cf312cc9cba38",
+        "name": "pegar temperatura",
+        "func": "msg.payload = Number(msg.payload.clima.temperatura)\n\nreturn msg",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 700,
+        "wires": [
+            [
+                "064ba5f909545165"
+            ]
+        ]
+    },
+    {
+        "id": "c21d22353a593d99",
+        "type": "mqtt in",
+        "z": "377cf312cc9cba38",
+        "name": "",
+        "topic": "monitorador-solar/cmd/tirar-foto",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "0a2485cd592a5fc2",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 610,
+        "y": 280,
+        "wires": [
+            [
+                "3688e35e47dd014a"
+            ]
+        ]
+    },
+    {
+        "id": "3688e35e47dd014a",
+        "type": "debug",
+        "z": "377cf312cc9cba38",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 900,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "d0d071cd4710cc71",
+        "type": "mqtt in",
+        "z": "377cf312cc9cba38",
+        "name": "",
+        "topic": "monitorador-solar/status/painel",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "0a2485cd592a5fc2",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 560,
+        "wires": [
+            [
+                "167ca3a2ca9761da",
+                "24a6dc406cc7b66a",
+                "30a8ac3fe2ea50d2",
+                "55dae12b1058a0ee",
+                "2cf907f7c41cfd10",
+                "65230c8bd1450055",
+                "b43c3b80f4c1adbe"
+            ]
+        ]
+    },
+    {
+        "id": "7d8e48450c261c30",
+        "type": "debug",
+        "z": "377cf312cc9cba38",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1130,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "1bfeaf09c7328a51",
+        "type": "mqtt out",
+        "z": "377cf312cc9cba38",
+        "name": "",
+        "topic": "monitorador-solar/cmd/acionar-valvula",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "0a2485cd592a5fc2",
+        "x": 390,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "b43c3b80f4c1adbe",
+        "type": "debug",
+        "z": "377cf312cc9cba38",
+        "name": "debug 5",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 230,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "8405d469c48bf0a5",
+        "type": "ui-group",
+        "name": "Imagem Do Painel",
+        "page": "6f3eae5d64264e9a",
+        "width": 6,
+        "height": 1,
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "0a2485cd592a5fc2",
+        "type": "mqtt-broker",
+        "name": "server emqx",
+        "broker": "broker.emqx.io",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "5483a3e5ef01ad3b",
+        "type": "ui-group",
+        "name": "Incidência Solar",
+        "page": "6f3eae5d64264e9a",
+        "width": 6,
+        "height": 1,
+        "order": 3,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "c71f23725403d1cf",
+        "type": "ui-base",
+        "name": "My Dashboard",
+        "path": "/dashboard",
+        "appIcon": "",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false,
+        "headerContent": "page",
+        "navigationStyle": "default",
+        "titleBarStyle": "default",
+        "showReconnectNotification": true,
+        "notificationDisplayTime": 1,
+        "showDisconnectNotification": true,
+        "allowInstall": false
+    },
+    {
+        "id": "2e77c70567b43a80",
+        "type": "ui-group",
+        "name": "Posição Painel",
+        "page": "6f3eae5d64264e9a",
+        "width": 6,
+        "height": 1,
+        "order": 4,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "874e63a46c469f32",
+        "type": "ui-group",
+        "name": "Ligar Válvula",
+        "page": "6f3eae5d64264e9a",
+        "width": 6,
+        "height": 1,
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "34be8969f68a6ba5",
+        "type": "ui-group",
+        "name": "Status",
+        "page": "6f3eae5d64264e9a",
+        "width": 6,
+        "height": 1,
+        "order": 5,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "6f3eae5d64264e9a",
+        "type": "ui-page",
+        "name": "Monitorador Solar",
+        "ui": "c71f23725403d1cf",
+        "path": "/page1",
+        "icon": "home",
+        "layout": "notebook",
+        "theme": "ea890402e531b8be",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 1,
+        "className": "",
+        "visible": "true",
+        "disabled": "true"
+    },
+    {
+        "id": "ea890402e531b8be",
+        "type": "ui-theme",
+        "name": "Default Theme",
+        "colors": {
+            "surface": "#ffffff",
+            "primary": "#0094CE",
+            "bgPage": "#eeeeee",
+            "groupBg": "#ffffff",
+            "groupOutline": "#cccccc"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "5d4db8bb98f0c439",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@flowfuse/node-red-dashboard": "1.30.2",
+            "node-red-contrib-image-tools": "2.1.1"
+        }
     }
 ]

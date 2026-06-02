@@ -20,10 +20,13 @@ from machine import ADC, I2C, PWM, Pin, Timer
 import math
 import struct
 import time
+import json
 
 import mqtt_service
 import wifi_service
 import camera_service
+from servo import Servo
+from relay import Relay
 
 from status_builder import StatusBuilder
 
@@ -42,10 +45,7 @@ mqtt.conectar_broker()
 
 mqtt.sub_multiplos_topicos(topicos_sub)
 
-# camera = camera_service.CameraService()
-
-# img = camera.capturar()
-# mqtt.pub(b"monitorador-solar/receber-foto",img)
+camera = camera_service.CameraService()
 
 # =============================================================================
 # PARÂMETROS CONFIGURÁVEIS
@@ -132,6 +132,9 @@ def ler_ldr1_estavel():
 servo1_pwm = PWM(Pin(43), freq=50, duty_u16=0)   
 servo2_pwm = PWM(Pin(44), freq=50, duty_u16=0)   
 
+# servo1_pwm = Servo(43)
+# servo2_pwm = Servo(44)
+
 # Buzzer  ESP32-S3
 buzzer_pin = Pin(3, Pin.OUT)
 buzzer = PWM(buzzer_pin)
@@ -172,6 +175,7 @@ def mover_servo_suave(graus_alvo, emitir_som=False):
 
 # ── ATUADORES NATIVOS KIIRA (NÍVEL LÓGICO ALTO) ─────────────────────────────────
 relay1      = Pin(48, Pin.OUT, value=0)  
+# relay1 = Relay(48)
 btn_limpeza = Pin(45, Pin.IN, Pin.PULL_UP)
 btn_reset   = Pin(46, Pin.IN, Pin.PULL_UP)
 
@@ -221,13 +225,9 @@ def enviar_status():
     print("ta mandando as info")
     mqtt.pub(b"monitorador-solar/status/painel", json_status)
 
-# def publicar_foto(timer=None):
-#     mqtt.pub(b"monitorador-solar/receber-foto",camera.capturar())
-
 timer = Timer(0)
-# timer.init(period=1_000, mode=Timer.PERIODIC, callback=publicar_foto)
 timer.init(period=10_000, mode=Timer.PERIODIC, callback=timer_handler)
-# timer.init(period=3_600_000, mode=Timer.PERIODIC, callback=enviar_status) # 1 hora
+# timer.init(period=3_600_000, mode=Timer.PERIODIC, callback=timer_handler) # 1 hora
 
 def loop():
     global angulo_atual, valvula_aberta, t_lavagem_fim, t_ultimo_rastreamento, modo_manual, t_inicio_inclinacao, estado_noturno, pode_enviar_status
@@ -239,9 +239,34 @@ def loop():
     while True:
         agora = time.ticks_ms()
 
+        mqtt.chegou_msg()
+
         if pode_enviar_status:
             enviar_status()
             pode_enviar_status = False
+
+        if mqtt.tem_mensagem and mqtt.topico is not None and mqtt.msg is not None:
+            msg_agora = mqtt.msg.decode()
+            topico_agora = mqtt.topico.decode()
+
+            if topico_agora == "monitorador-solar/cmd/tirar-foto" and msg_agora == "foto":
+                img = camera.capturar()
+                mqtt.pub(b"monitorador-solar/receber-foto", img)
+
+            elif topico_agora == "monitorador-solar/cmd/acionar-valvula":
+                msg_json = json.loads(msg_agora)
+
+                tempo_segundos = msg_json["tempo_segundos"]
+
+                relay1.value(1)
+                time.sleep(tempo_segundos)
+                relay1.value(0)
+                print("ligou a valvula")
+
+            # print(msg_agora)
+            # print(topico_agora)
+
+            mqtt.reset()
 
         if time.ticks_diff(agora, t_ultimo_rastreamento) >= CICLO_MS:
             t_ultimo_rastreamento = agora
