@@ -24,49 +24,37 @@
 #    - Botão de Limpeza Manual: Pin(45)     [Entrada Digital - Pull-Up Interno]
 #    - Botão de Reset / Modos: Pin(46)      [Entrada Digital - Pull-Up Interno]
 # =============================================================================
+from machine import ADC, I2C, PWM, Pin, Timer
 
 import math
-import struct
 import time
-from machine import I2C, PWM, Pin
+import json
 
-# ── Driver SSD1306 embutido para o OLED Integrado ───────────────────────────
-class SSD1306:
-    def __init__(self, width, height, external_vcc):
-        self.width = width
-        self.height = height
-        self.external_vcc = external_vcc
-        self.pages = self.height // 8
-        self.buffer = bytearray(self.pages * self.width)
-        self.init_display()
-    def init_display(self):
-        for cmd in (0xAE, 0xD5, 0x80, 0xA8, self.height - 1, 0xD3, 0x00, 0x40, 0x8D, 0x14 if not self.external_vcc else 0x10, 0x20, 0x00, 0xA1, 0xC8, 0xDA, 0x12 if self.height == 64 else 0x02, 0x81, 0xCF if not self.external_vcc else 0x9F, 0xD9, 0xF1 if not self.external_vcc else 0x22, 0xDB, 0x40, 0xA4, 0xA6, 0xAF):
-            self.write_cmd(cmd)
-        self.fill(0)
-        self.show()
-    def fill(self, col):
-        self.buffer = bytearray([0xff if col else 0x00] * len(self.buffer))
-    def text(self, string, x, y, col=1):
-        import framebuf
-        fbuf = framebuf.FrameBuffer(self.buffer, self.width, self.height, framebuf.MONO_VLSB)
-        fbuf.text(string, x, y, col)
-    def show(self):
-        x0, x1 = 0, self.width - 1
-        self.write_cmd(0x21); self.write_cmd(x0); self.write_cmd(x1)
-        self.write_cmd(0x22); self.write_cmd(0); self.write_cmd(self.pages - 1)
-        self.write_data(self.buffer)
+import mqtt_service
+import wifi_service
+import camera_service
+from servo import Servo
+from relay import Relay
+from hdc import Hdc1080
+from mpu import Mpu6050
+from status_builder import StatusBuilder
 
-class SSD1306_I2C(SSD1306):
-    def __init__(self, width, height, i2c, addr=0x3c, external_vcc=False):
-        self.i2c = i2c
-        self.addr = addr
-        self.temp = bytearray(2)
-        super().__init__(width, height, external_vcc)
-    def write_cmd(self, cmd):
-        self.temp[0] = 0x00; self.temp[1] = cmd
-        self.i2c.writeto(self.addr, self.temp)
-    def write_data(self, buf):
-        self.i2c.writeto(self.addr, b'\x40' + buf)
+import ssd1306
+
+topicos_sub = [
+    "monitorador-solar/cmd/tirar-foto",
+    "monitorador-solar/cmd/acionar-valvula",
+]
+
+wifi = wifi_service.WifiService("IFCE Alunos","")
+wifi.conectar_rede()
+
+mqtt = mqtt_service.MqttService()
+mqtt.conectar_broker()
+
+mqtt.sub_multiplos_topicos(topicos_sub)
+
+# camera = camera_service.CameraService()
 
 # =============================================================================
 # PARÂMETROS CONFIGURÁVEIS DO SISTEMA
@@ -97,8 +85,11 @@ MPU_ACCEL_REG   = 0x3B
 i2c0 = I2C(0, sda=Pin(14), scl=Pin(21), freq=400_000)
 i2c1 = I2C(1, sda=Pin(41), scl=Pin(42), freq=400_000)
 
+hdc = Hdc1080(i2c)
+mpu = Mpu6050(i2c)
+
 try:
-    oled = SSD1306_I2C(128, 64, i2c0, addr=OLED_ADDR)
+    oled = ssd1306.SSD1306_I2C(128, 64, i2c0, addr=OLED_ADDR)
     oled.fill(0)
     oled.text("KiiRA Solar V1.2", 0, 0)
     oled.show()
@@ -123,14 +114,6 @@ def bh1750_ler_lux(i2c_bus):
 
 bh1750_init(i2c0)  
 bh1750_init(i2c1)  
-
-def mpu_leitura_accel():
-    try:
-        raw = i2c0.readfrom_mem(MPU_ADDR, MPU_ACCEL_REG, 6)
-        ax_raw, ay_raw, az_raw = struct.unpack('>hhh', raw)
-        return ax_raw / 16384.0, ay_raw / 16384.0, az_raw / 16384.0
-    except:
-        return 0.0, 0.0, 1.0  
 
 def calcular_angulo(ax, az):
     try:
@@ -175,7 +158,8 @@ def mover_servo_suave(graus_alvo):
     mover_servo(graus_alvo)
     angulo_alvo_antigo = graus_alvo
 
-relay1      = Pin(48, Pin.OUT, value=0)  
+# ── ATUADORES NATIVOS KIIRA (NÍVEL LÓGICO ALTO) ─────────────────────────────────
+relay1 = Relay(48)
 btn_limpeza = Pin(45, Pin.IN, Pin.PULL_UP)
 btn_reset   = Pin(46, Pin.IN, Pin.PULL_UP)
 
@@ -185,8 +169,8 @@ def beep(duracao_ms=100):
         buzzer.duty_u16(32768) 
         time.sleep_ms(duracao_ms)
         buzzer.duty_u16(0)
-    except:
-        pass
+    except Exception as e:
+        print(e)
 
 # =============================================================================
 # LOOP PRINCIPAL DO SISTEMA
@@ -200,8 +184,38 @@ modo_manual = 0
 t_inicio_inclinacao = 0  
 estado_noturno = False
 
+pode_enviar_status = False
+
+monitor_sensores = {
+    "umidade":0,
+    "temperatura": 0,
+    "posicao-x": 0,
+    "posicao-y": 0,
+    "LDR_Esq": 0,
+    "LDR_Dir": 0,
+    "delta": 0
+}
+
+def timer_handler(timer=None):
+    global pode_enviar_status
+    pode_enviar_status = True
+
+def enviar_status():
+    json_status = (StatusBuilder()
+                   .set_clima(monitor_sensores["umidade"],monitor_sensores["temperatura"])
+                   .set_luminosidade(monitor_sensores["LDR_Esq"],monitor_sensores["LDR_Dir"],monitor_sensores["delta"])
+                   .set_posicao_painel(monitor_sensores["posicao-x"],monitor_sensores["posicao-y"])
+                   .build())
+
+    print("ta mandando as info")
+    mqtt.pub(b"monitorador-solar/status/painel", json_status)
+
+timer = Timer(0)
+timer.init(period=10_000, mode=Timer.PERIODIC, callback=timer_handler)
+# timer.init(period=3_600_000, mode=Timer.PERIODIC, callback=timer_handler) # 1 hora
+
 def loop():
-    global angulo_atual, valvula_aberta, t_lavagem_fim, t_ultimo_rastreamento, modo_manual, t_inicio_inclinacao, estado_noturno
+    global angulo_atual, valvula_aberta, t_lavagem_fim, t_ultimo_rastreamento, modo_manual, t_inicio_inclinacao, estado_noturno, pode_enviar_status
 
     print("Firmware KiiRA V1.2 Ativo — Sistema Rodando Limpo")
     time.sleep_ms(100)
