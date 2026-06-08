@@ -18,7 +18,6 @@
 from machine import ADC, I2C, PWM, Pin, Timer
 
 import math
-import struct
 import time
 import json
 
@@ -27,7 +26,8 @@ import wifi_service
 import camera_service
 from servo import Servo
 from relay import Relay
-
+from hdc import Hdc1080
+from mpu import Mpu6050
 from status_builder import StatusBuilder
 
 import ssd1306
@@ -45,7 +45,7 @@ mqtt.conectar_broker()
 
 mqtt.sub_multiplos_topicos(topicos_sub)
 
-camera = camera_service.CameraService()
+# camera = camera_service.CameraService()
 
 # =============================================================================
 # PARÂMETROS CONFIGURÁVEIS
@@ -67,15 +67,15 @@ SERVO_DUTY_MIN = 1638
 SERVO_DUTY_MAX = 8192     
 
 OLED_ADDR   = 0x3C
-MPU_ADDR    = 0x68
 HDC_ADDR    = 0x40
-MPU_PWR_REG = 0x6B        
-MPU_ACCEL_REG = 0x3B     
 
 # =============================================================================
 # INICIALIZAÇÃO DO HARDWARE FIXO
 # =============================================================================
 i2c = I2C(0, sda=Pin(14), scl=Pin(21), freq=400_000)
+
+hdc = Hdc1080(i2c)
+mpu = Mpu6050(i2c)
 
 try:
     oled = ssd1306.SSD1306_I2C(128, 64, i2c, addr=OLED_ADDR)
@@ -87,35 +87,11 @@ try:
 except:
     OLED_OK = False
 
-def mpu_leitura_accel():
-    try:
-        raw = i2c.readfrom_mem(MPU_ADDR, MPU_ACCEL_REG, 6)
-        ax_raw, ay_raw, az_raw = struct.unpack('>hhh', raw)
-        return ax_raw / 16384.0, ay_raw / 16384.0, az_raw / 16384.0
-    except:
-        return 0.0, 0.0, 1.0  
-
 def calcular_angulo(ax, az):
     try:
         return math.atan2(ax, az) * (180 / math.pi)
     except:
         return 0.0
-
-def hdc_ler():
-    try:
-        i2c.writeto(HDC_ADDR, b'\x00')
-        time.sleep_ms(15)
-        dados = i2c.readfrom(HDC_ADDR, 4)
-        t_raw = (dados[0] << 8) | dados[1]
-        h_raw = (dados[2] << 8) | dados[3]
-        return round(((t_raw / 65536.0) * 165.0 - 40.0), 1), round(((h_raw / 65536.0) * 100.0), 1)
-    except:
-        return 0.0, 0.0
-
-try:
-    i2c.writeto_mem(MPU_ADDR, MPU_PWR_REG, b'\x00')
-except:
-    pass
 
 # ── CONFIGURAÇÃO DOS SENSORES ────────────────────────────────────────────────
 adc_ldr1 = ADC(Pin(1), atten=ADC.ATTN_11DB)        
@@ -174,8 +150,7 @@ def mover_servo_suave(graus_alvo, emitir_som=False):
         angulo_alvo_antigo = graus_alvo
 
 # ── ATUADORES NATIVOS KIIRA (NÍVEL LÓGICO ALTO) ─────────────────────────────────
-relay1      = Pin(48, Pin.OUT, value=0)  
-# relay1 = Relay(48)
+relay1 = Relay(48)
 btn_limpeza = Pin(45, Pin.IN, Pin.PULL_UP)
 btn_reset   = Pin(46, Pin.IN, Pin.PULL_UP)
 
@@ -184,8 +159,8 @@ def beep(duracao_ms=100):
         buzzer.duty_u16(32768)
         time.sleep_ms(duracao_ms)
         buzzer.duty_u16(0)
-    except:
-        pass
+    except Exception as e:
+        print(e)
 
 # =============================================================================
 # LOOP PRINCIPAL
@@ -258,9 +233,9 @@ def loop():
 
                 tempo_segundos = msg_json["tempo_segundos"]
 
-                relay1.value(1)
+                relay1.ligar()
                 time.sleep(tempo_segundos)
-                relay1.value(0)
+                relay1.desligar()
                 print("ligou a valvula")
 
             # print(msg_agora)
@@ -274,7 +249,7 @@ def loop():
             ldr1_val = ler_ldr1_estavel()
             ldr2_sat = pin_ldr2.value()
 
-            ax, ay, az = mpu_leitura_accel()
+            ax, ay, az = mpu.leitura_acelerometro()
             inclinacao  = calcular_angulo(ax, az)
 
             monitor_sensores["LDR_Dir"] = ldr1_val
@@ -323,7 +298,7 @@ def loop():
                 angulo_atual = 0  
                 mover_servo_suave(angulo_atual, emitir_som=True) 
 
-            temp, umid = hdc_ler()
+            temp, umid = hdc.ler_temperatura_umidade()
 
             monitor_sensores["temperatura"] = temp
             monitor_sensores["umidade"] = umid
@@ -353,7 +328,7 @@ def loop():
         if btn_limpeza.value() == 0:
             time.sleep_ms(20)
             if btn_limpeza.value() == 0 and not valvula_aberta:
-                relay1.value(1) 
+                relay1.ligar()
                 valvula_aberta = True
                 t_lavagem_fim = time.ticks_add(agora, LAVAGEM_S * 1000)
                 beep(150)
@@ -387,7 +362,7 @@ def loop():
                 time.sleep_ms(300) 
 
         if valvula_aberta and time.ticks_diff(agora, t_lavagem_fim) >= 0:
-            relay1.value(0) 
+            relay1.desligar()
             valvula_aberta = False
 
         time.sleep_ms(10)
