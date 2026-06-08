@@ -17,5 +17,6 @@ class Mpu6050:
             raw = self.i2c.readfrom_mem(self.mpu_addr, self.mpu_accel_reg, 6)
             ax_raw, ay_raw, az_raw = struct.unpack('>hhh', raw)
             return ax_raw / 16384.0, ay_raw / 16384.0, az_raw / 16384.0
-        except:
+        except Exception as e:
+            print(e)
             return 0.0, 0.0, 1.0

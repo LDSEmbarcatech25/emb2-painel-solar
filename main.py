@@ -24,7 +24,7 @@
 #    - Botão de Limpeza Manual: Pin(45)     [Entrada Digital - Pull-Up Interno]
 #    - Botão de Reset / Modos: Pin(46)      [Entrada Digital - Pull-Up Interno]
 # =============================================================================
-from machine import ADC, I2C, PWM, Pin, Timer
+from machine import I2C, PWM, Pin, Timer
 
 import math
 import time
@@ -33,10 +33,13 @@ import json
 import mqtt_service
 import wifi_service
 import camera_service
+
 from servo import Servo
 from relay import Relay
 from hdc import Hdc1080
 from mpu import Mpu6050
+from bh1750 import Bh1750
+from camera_service import CameraService
 from status_builder import StatusBuilder
 
 import ssd1306
@@ -53,8 +56,6 @@ mqtt = mqtt_service.MqttService()
 mqtt.conectar_broker()
 
 mqtt.sub_multiplos_topicos(topicos_sub)
-
-# camera = camera_service.CameraService()
 
 # =============================================================================
 # PARÂMETROS CONFIGURÁVEIS DO SISTEMA
@@ -73,20 +74,11 @@ SERVO_DUTY_MIN  = 1638
 SERVO_DUTY_MAX  = 8192        
 
 OLED_ADDR       = 0x3C
-MPU_ADDR        = 0x68
-HDC_ADDR        = 0x40
-BH1750_ADDR     = 0x23        
-MPU_PWR_REG     = 0x6B        
-MPU_ACCEL_REG   = 0x3B     
-
 # =============================================================================
 # INICIALIZAÇÃO DOS BARRAMENTOS I2C (DUPLO)
 # =============================================================================
 i2c0 = I2C(0, sda=Pin(14), scl=Pin(21), freq=400_000)
 i2c1 = I2C(1, sda=Pin(41), scl=Pin(42), freq=400_000)
-
-hdc = Hdc1080(i2c)
-mpu = Mpu6050(i2c)
 
 try:
     oled = ssd1306.SSD1306_I2C(128, 64, i2c0, addr=OLED_ADDR)
@@ -97,45 +89,20 @@ try:
 except:
     OLED_OK = False
 
-def bh1750_init(i2c_bus):
-    try:
-        i2c_bus.writeto(BH1750_ADDR, b'\x01')  
-        i2c_bus.writeto(BH1750_ADDR, b'\x10')  
-    except:
-        pass
+bh1750_Esq = Bh1750(i2c0)
+bh1750_Dir = Bh1750(i2c1)
 
-def bh1750_ler_lux(i2c_bus):
-    try:
-        dados = i2c_bus.readfrom(BH1750_ADDR, 2)
-        lux = (dados[0] << 8) | dados[1]
-        return round(lux / 1.2)     
-    except:
-        return 0
+hdc = Hdc1080(i2c0)
+mpu = Mpu6050(i2c0)
 
-bh1750_init(i2c0)  
-bh1750_init(i2c1)  
+# camera = CameraService()
 
 def calcular_angulo(ax, az):
     try:
         return math.atan2(ax, az) * (180 / math.pi)
-    except:
+    except Exception as e:
+        print(e)
         return 0.0
-
-def hdc_ler():
-    try:
-        i2c0.writeto(HDC_ADDR, b'\x00')
-        time.sleep_ms(15)
-        dados = i2c0.readfrom(HDC_ADDR, 4)
-        t_raw = (dados[0] << 8) | dados[1]
-        h_raw = (dados[2] << 8) | dados[3]
-        return round(((t_raw / 65536.0) * 165.0 - 40.0), 1), round(((h_raw / 65536.0) * 100.0), 1)
-    except:
-        return 0.0, 0.0
-
-try:
-    i2c0.writeto_mem(MPU_ADDR, MPU_PWR_REG, b'\x00')
-except:
-    pass
 
 # ── CONFIGURAÇÃO DOS ATUADORES ──────────────────────────────────────────────
 servo2_pwm = PWM(Pin(44), freq=50, duty_u16=0)   
@@ -225,14 +192,47 @@ def loop():
     while True:
         agora = time.ticks_ms()
 
+        mqtt.chegou_msg()
+
+        if pode_enviar_status:
+            enviar_status()
+            pode_enviar_status = False
+
+        if mqtt.tem_mensagem and mqtt.topico is not None and mqtt.msg is not None:
+            msg_agora = mqtt.msg.decode()
+            topico_agora = mqtt.topico.decode()
+
+            if topico_agora == "monitorador-solar/cmd/tirar-foto" and msg_agora == "foto":
+                img = camera.capturar()
+                mqtt.pub(b"monitorador-solar/receber-foto", img)
+
+            elif topico_agora == "monitorador-solar/cmd/acionar-valvula":
+                msg_json = json.loads(msg_agora)
+
+                tempo_segundos = msg_json["tempo_segundos"]
+
+                relay1.ligar()
+                time.sleep(tempo_segundos)
+                relay1.desligar()
+                print("ligou a valvula")
+
+            # print(msg_agora)
+            # print(topico_agora)
+
+            mqtt.reset()
+
         # O rastreamento funciona normalmente, a não ser que a lavagem seja ativada
         if not valvula_aberta:
             if time.ticks_diff(agora, t_ultimo_rastreamento) >= CICLO_MS:
                 t_ultimo_rastreamento = agora
 
-                lux_esq = bh1750_ler_lux(i2c0)       
-                lux_dir = bh1750_ler_lux(i2c1)       
-                ax, ay, az = mpu_leitura_accel()
+                lux_esq = bh1750_Esq.ler_luminosidade()
+                lux_dir =  bh1750_Dir.ler_luminosidade()
+                ax, ay, az = mpu.leitura_acelerometro()
+
+                monitor_sensores["LDR_Esq"] = lux_esq
+                monitor_sensores["LDR_Dir"] = lux_dir
+
                 inclinacao  = calcular_angulo(ax, az)
 
                 if modo_manual == 0:
@@ -271,7 +271,11 @@ def loop():
                     angulo_atual = 0  
                     mover_servo_suave(angulo_atual) 
 
-                temp, umid = hdc_ler()
+                temp, umid = hdc.ler_temperatura_umidade()
+
+                monitor_sensores["umidade"] = temp
+                monitor_sensores["temperatura"] = umid
+
                 if OLED_OK:
                     oled.fill(0)
                     oled.text("KiiRA Solar V1.2", 0, 0)
@@ -300,7 +304,7 @@ def loop():
                 # Corta o sinal do servo para ele estancar o movimento no lugar atual
                 servo2_pwm.duty_u16(0) 
                 
-                relay1.value(1) # Abre a válvula d'água
+                relay1.ligar() # Abre a válvula d'água
                 valvula_aberta = True
                 t_lavagem_fim = time.ticks_add(agora, LAVAGEM_S * 1000)
                 beep(150)
@@ -315,7 +319,7 @@ def loop():
         # Monitor do tempo da lavagem ativa
         if valvula_aberta:
             if time.ticks_diff(agora, t_lavagem_fim) >= 0:
-                relay1.value(0) # Fecha a válvula d'água
+                relay1.desligar() # Fecha a válvula d'água
                 valvula_aberta = False
                 
                 # Reativa o sinal do servo devolvendo ele para a posição guardada
