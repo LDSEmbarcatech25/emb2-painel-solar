@@ -32,7 +32,6 @@ import json
 
 import mqtt_service
 import wifi_service
-import camera_service
 
 from servo import Servo
 from relay import Relay
@@ -86,16 +85,18 @@ try:
     oled.text("KiiRA Solar V1.2", 0, 0)
     oled.show()
     OLED_OK = True
-except:
+except Exception as e:
+    print(e)
     OLED_OK = False
 
-bh1750_Esq = Bh1750(i2c0)
-bh1750_Dir = Bh1750(i2c1)
+
+# bh1750_Esq = Bh1750(i2c0)
+# bh1750_Dir = Bh1750(i2c1)
+camera = CameraService()
 
 hdc = Hdc1080(i2c0)
 mpu = Mpu6050(i2c0)
 
-# camera = CameraService()
 
 def calcular_angulo(ax, az):
     try:
@@ -156,11 +157,9 @@ pode_enviar_status = False
 monitor_sensores = {
     "umidade":0,
     "temperatura": 0,
-    "posicao-x": 0,
-    "posicao-y": 0,
     "LDR_Esq": 0,
     "LDR_Dir": 0,
-    "delta": 0
+    "angulo_painel":0
 }
 
 def timer_handler(timer=None):
@@ -170,8 +169,8 @@ def timer_handler(timer=None):
 def enviar_status():
     json_status = (StatusBuilder()
                    .set_clima(monitor_sensores["umidade"],monitor_sensores["temperatura"])
-                   .set_luminosidade(monitor_sensores["LDR_Esq"],monitor_sensores["LDR_Dir"],monitor_sensores["delta"])
-                   .set_posicao_painel(monitor_sensores["posicao-x"],monitor_sensores["posicao-y"])
+                   .set_luminosidade(monitor_sensores["LDR_Esq"],monitor_sensores["LDR_Dir"])
+                   .set_angulo_painel(monitor_sensores["angulo_painel"])
                    .build())
 
     print("ta mandando as info")
@@ -207,6 +206,12 @@ def loop():
                 mqtt.pub(b"monitorador-solar/receber-foto", img)
 
             elif topico_agora == "monitorador-solar/cmd/acionar-valvula":
+                oled.fill(0)
+                oled.text("KiiRA Solar V1.2", 0, 0)
+                oled.text(">> LAVANDO <<", 0, 26)
+                oled.text("PAINEL TRAVADO", 0, 45)
+                oled.show()
+
                 msg_json = json.loads(msg_agora)
 
                 tempo_segundos = msg_json["tempo_segundos"]
@@ -273,8 +278,8 @@ def loop():
 
                 temp, umid = hdc.ler_temperatura_umidade()
 
-                monitor_sensores["umidade"] = temp
-                monitor_sensores["temperatura"] = umid
+                monitor_sensores["umidade"] = umid
+                monitor_sensores["temperatura"] = temp
 
                 if OLED_OK:
                     oled.fill(0)
@@ -296,6 +301,8 @@ def loop():
                     oled.text(f"T:{temp}C H:{umid}%", 0, 39)
                     oled.text("Valvula: Fechada", 0, 52)
                     oled.show()
+
+                monitor_sensores["angulo_painel"] = angulo_atual
 
         # ── DISPARADOR DA VÁLVULA DE ENXÁGUE MANUAL (FORÇA O MOTOR A PARAR IMEDIATAMENTE)
         if btn_limpeza.value() == 0:

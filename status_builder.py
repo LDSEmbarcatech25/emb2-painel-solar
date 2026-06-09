@@ -5,7 +5,7 @@ class StatusBuilder:
         self.payload = {
             "clima":{},
             "luminosidade": {},
-            "posicao_painel": {},
+            "angulo_painel": None,
         }
 
     def set_clima(self,umidade,temperatura):
@@ -16,20 +16,16 @@ class StatusBuilder:
 
         return self
 
-    def set_luminosidade(self,ldr_esq,ldr_dir,delta):
+    def set_luminosidade(self,ldr_esq,ldr_dir):
         self.payload["luminosidade"] = {
             "LDR_Esq": ldr_esq,
-            "LDR_Dir": ldr_dir,
-            "delta": delta
+            "LDR_Dir": ldr_dir
         }
         return self
 
-    def set_posicao_painel(self,x,y):
+    def set_angulo_painel(self,angulo_painel):
 
-        self.payload["posicao_painel"] = {
-            "x": int(x),
-            "y": y
-        }
+        self.payload["angulo_painel"] = angulo_painel
 
         return self
 
