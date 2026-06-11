@@ -38,7 +38,7 @@ from relay import Relay
 from hdc import Hdc1080
 from mpu import Mpu6050
 from bh1750 import Bh1750
-from camera_service import CameraService
+# from camera_service import CameraService
 from status_builder import StatusBuilder
 
 import ssd1306
@@ -89,14 +89,26 @@ except Exception as e:
     print(e)
     OLED_OK = False
 
-
-# bh1750_Esq = Bh1750(i2c0)
-# bh1750_Dir = Bh1750(i2c1)
-camera = CameraService()
+bh1750_Esq = Bh1750(i2c0)
+bh1750_Dir = Bh1750(i2c1)
 
 hdc = Hdc1080(i2c0)
 mpu = Mpu6050(i2c0)
 
+# camera = CameraService(i2c2)
+
+# def scan(i2c, nome):
+#     print("\nScanning", nome)
+#     devices = i2c.scan()
+#
+#     if len(devices) == 0:
+#         print("Nenhum dispositivo encontrado")
+#     else:
+#         for d in devices:
+#             print("Encontrado:", hex(d))
+#
+# scan(i2c0, "I2C0")
+# scan(i2c1, "I2C1")
 
 def calcular_angulo(ax, az):
     try:
@@ -202,9 +214,9 @@ def loop():
             topico_agora = mqtt.topico.decode()
 
             if topico_agora == "monitorador-solar/cmd/tirar-foto" and msg_agora == "foto":
-                img = camera.capturar()
-                mqtt.pub(b"monitorador-solar/receber-foto", img)
-
+                # img = camera.capturar()
+                # mqtt.pub(b"monitorador-solar/receber-foto", img)
+                pass
             elif topico_agora == "monitorador-solar/cmd/acionar-valvula":
                 oled.fill(0)
                 oled.text("KiiRA Solar V1.2", 0, 0)

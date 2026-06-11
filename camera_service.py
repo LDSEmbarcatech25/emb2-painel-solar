@@ -30,7 +30,7 @@ from camera import Camera, GrabMode, PixelFormat, FrameSize, GainCeiling
 from machine import I2C
 
 class CameraService:
-    def __init__(self):
+    def __init__(self,i2c:I2C):
         self.camera = Camera(
             # data_pins=[16,17,18,12,10,8,9,11],
             data_pins=[11,9,8,10,12,18,17,16],
@@ -42,9 +42,8 @@ class CameraService:
             xclk_pin=15,
             xclk_freq=40_000_000,
             pixel_format=PixelFormat.JPEG,
-            frame_size=FrameSize.VGA,
+            frame_size=FrameSize.HD,
             grab_mode=GrabMode.LATEST
-            # i2c=i2c
         )
 
     def capturar(self) -> bytes:
