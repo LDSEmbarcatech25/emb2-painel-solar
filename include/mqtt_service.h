@@ -1,33 +1,49 @@
-#ifndef MQTT_H
-#define MQTT_H
+#ifndef MQTT_SERVICE_H
+#define MQTT_SERVICE_H
 
-#include <PubSubClient.h>
-#include <WiFiClient.h>
 #include <WiFi.h>
+#include <PubSubClient.h>
+#include <vector>
 
-class MQTTService {
-  private:
-    WiFiClient espClient;
-    PubSubClient client;
+class MqttService {
+private:
+  WiFiClient espClient;
+  PubSubClient client;
 
-    String topico;
-    String msg;
+  String topico;
+  String msg;
+  bool tem_mensagem = false;
 
-    const char* mqtt_user;
-    const char* mqtt_password;
+  static MqttService* instance;  // usado para callback estático
 
-  public:
-    MQTTService(const char* broker,
-         const char* client_id = "ESP32",
-         const char* user = nullptr,
-         const char* password = nullptr);
+  static void internal_callback(char* topic, byte* payload, unsigned int length);
 
-    void conectar_mqtt();
-    void sub(const char* topic);
-    void pub(const char* topic, const char* message);
-    void check();
+public:
+  MqttService(const char* broker, const char* client_id);
 
-    void receber_msg(char* topic, byte* payload, unsigned int length);
+  void conectar_broker();
+
+  void pub(const char* topic, const char* message);
+
+  void sub(const char* topic);
+
+  void sub_multiplos(const char* topicos[]);
+
+  void loop();
+
+  void reset();
+
+  bool hasMessage();
+
+  String getTopic();
+
+  String getMessage();
+
+  PubSubClient& getClient();
+
+  bool begin_pub(const char* topic, size_t length, bool retained = false);
+  size_t write_pub(const uint8_t* data, size_t len);
+  bool end_pub();
 };
 
 #endif

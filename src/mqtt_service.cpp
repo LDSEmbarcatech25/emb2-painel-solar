@@ -1,72 +1,90 @@
-#include <PubSubClient.h>
-#include <WiFiClient.h>
 #include <WiFi.h>
+#include <PubSubClient.h>
+#include <vector>
 
-class MQTTService {
-  private:
-    WiFiClient espClient;
-    PubSubClient client;
+class MqttService {
+private:
+  WiFiClient espClient;
+  PubSubClient client;
 
-    String topico;
-    String msg;
+  String topico;
+  String msg;
+  bool tem_mensagem = false;
 
-    const char* mqtt_user;
-    const char* mqtt_password;
+  // ponteiro para callback de mensagem
+  void (*userCallback)(String, String) = nullptr;
 
-  public:
-    MQTTService(const char* broker,
-         const char* client_id = "ESP32",
-         const char* user = nullptr,
-         const char* password = nullptr)
-      : client(espClient),
-        mqtt_user(user),
-        mqtt_password(password)
-    {
-      client.setServer(broker, 1883);
-      client.setCallback([this](char* topic, byte* payload, unsigned int length) {
-        this->receber_msg(topic, payload, length);
-      });
-    }
+public:
+  MqttService(const char* broker, const char* client_id)
+    : client(espClient) {
+    client.setServer(broker, 1883);
+  }
 
-    void conectar_mqtt() {
-      while (!client.connected()) {
-        Serial.print("Conectando MQTT...");
+  void conectar_broker() {
+    while (!client.connected()) {
+      Serial.println("Conectando MQTT...");
 
-        if (client.connect("ESP32", mqtt_user, mqtt_password)) {
-          Serial.println(" conectado!");
-        } else {
-          Serial.print(" falhou, rc=");
-          Serial.print(client.state());
-          Serial.println(" tentando novamente em 2s");
-          delay(2000);
-        }
+      if (client.connect("ESP32")) {
+        Serial.println("foi");
+      } else {
+        Serial.print("falhou, rc=");
+        Serial.println(client.state());
+        delay(2000);
       }
     }
+  }
 
-    void sub(const char* topic) {
-      client.subscribe(topic);
+  void pub(const char* topic, const char* message) {
+    client.publish(topic, message);
+  }
+
+  void sub(const char* topic) {
+    client.subscribe(topic);
+  }
+
+  void sub_multiplos(const char* topicos[]) {
+    
+    for(int i = 0;i < sizeof(topicos) / sizeof(topicos[0]);i++){ 
+      client.subscribe(topicos[i]);
+      delay(2000);
     }
+  }
 
-    void pub(const char* topic, const char* message) {
-      client.publish(topic, message);
+  void loop() {
+    client.loop();
+  }
+
+  // equivalente ao msg_log do MicroPython
+  static void internal_callback(char* topic, byte* payload, unsigned int length) {
+    Serial.print("Topico: ");
+    Serial.println(topic);
+
+    Serial.print("Mensagem: ");
+    for (int i = 0; i < length; i++) {
+      Serial.print((char)payload[i]);
     }
+    Serial.println();
+  }
 
-    void check() {
-      client.loop();
-    }
+  void reset() {
+    tem_mensagem = false;
+    msg = "";
+    topico = "";
+  }
 
-    void receber_msg(char* topic, byte* payload, unsigned int length) {
-      topico = String(topic);
+  PubSubClient& getClient() {
+    return client;
+  }
 
-      msg = "";
-      for (unsigned int i = 0; i < length; i++) {
-        msg += (char)payload[i];
-      }
+  bool begin_pub(const char* topic, size_t length, bool retained = false) {
+    return client.beginPublish(topic, length, retained);
+  }
 
-      Serial.print("Topico: ");
-      Serial.println(topico);
+  size_t write_pub(const uint8_t* data, size_t len) {
+    return client.write(data, len);
+  }
 
-      Serial.print("Mensagem: ");
-      Serial.println(msg);
-    }
+  bool end_pub() {
+    return client.endPublish();
+  }
 };
